@@ -9,12 +9,12 @@ import easygui
 parameters = {'data_set': [True, False, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
 parameters['scale'] = 500
 
-parameters['ions']= [[20.21, 30, 31], [40, 41, 50, 51]]
+parameters['ions']= [[0,1,10,11], [40, 41, 50, 51],[20.21, 30, 31], ]
 # [[28, 29, 38, 39], [48, 49, 58, 59]]
 # [[20.21, 30, 31], [40, 41, 50, 51]]
 # [[i for i in range(20, 40)],[i for i in range(40, 60)]]
-parameters['orbital_sum'] = [[0],[1,2,3]]
-parameters['color_map'] = ['r', 'b', 'g']
+parameters['orbital_sum'] = [[0],[1,2,3], [0],]
+parameters['color_map'] = ['r', 'b', 'y']
 ##
 
 def read_CONTCAR(file=open('CONTCAR', 'r')):
@@ -111,9 +111,9 @@ def read_procar(parameters, file=open('PROCAR','r')):
 
     return dict
 
-file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
-file = open(file_name, 'r')
-dict = read_procar(parameters, file=file)
+#file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
+#file = open(file_name, 'r')
+dict = read_procar(parameters)
 print("reading process is done")
 print("nband", dict['nband'])
 
@@ -146,16 +146,10 @@ def band_analyze(dict, parameters):
     # we think nion_sets should be same with norbital_set
     linewidth = np.zeros((nkpt, nband, ndataset, nion_sets), dtype='float')
     color = np.zeros((nkpt, nband, ndataset, nion_sets), dtype='int')
-    for i in range(nkpt):
-        for j in range(nband):
-            for k in range(ndataset):
-                tmp  = np.zeros(nion_sets, dtype='float')
-                for l in range(nion_sets):
-                    tmp[l] = data1[i, j, k, l, l]
-                linewidth[i, j, k, :] = np.sort(tmp)
-                color[i, j, k, :] = np.argsort(tmp) + 1
-    if 0 in color:
-        print("ERROR: there is a 0 in color matrix")
+    for l in range(nion_sets):
+        linewidth[:,:,:,l] = data1[:,:,:,l, l]
+        color[:,:,:,l] = color[:,:,:,l] + l + 1
+    print("linewidth shape", np.shape(linewidth))
 
     dict['linewidth'] = linewidth
     dict['color'] = color
@@ -166,26 +160,21 @@ def plot_band(kd, parameters, dict, data_set):
     # plot
     # x = kd
     # y = eng[:,i]
-
-    for i in range(dict['nband']):
+    lwidths = dict['linewidth'][:, :, data_set, :]
+    nkpt, nband, norbitals = np.shape(lwidths)
+    print("lwidth shape", nkpt, nband, norbitals)
+    color = dict['color'][:, :, data_set, :]
+    scale = parameters['scale']
+    for i in range(nband):
         # only present the largest contribution
-        lwidths = dict['linewidth'][:,i,data_set, 0]
-        scale = parameters['scale']
-        #print(lwidths)
-        color = dict['color'][:,i, data_set,0]
-        #points = np.array([kd, dict['eng'][:,i]]).T.reshape(-1, 1, 2)
-        #segments = np.concatenate([points[:-1], points[1:]], axis=1)
         plt.plot(kd, dict['eng'][:, i], 'k-')
 
-        for j in range(len(lwidths)-1) :
-            #if not np.allclose(lwidths[j],0):
-            c=parameters['color_map'][color[j]-1]
-            #print(c)
-            #print(kd[j:j+2], dict['eng'][j:j+2, i])
-            if parameters['energy_window'][0] < dict['eng'][j, i] < parameters['energy_window'][1] and \
-                parameters['energy_window'][0] < dict['eng'][j+1, i] < parameters['energy_window'][1] \
-                    and not np.allclose(lwidths[j], 0, atol= 1e-3):
-                plt.plot(kd[j:j+2], dict['eng'][j:j+2, i], linewidth=lwidths[j]*scale, color=c)
+        for j in range(norbitals) :
+            for k in range(nkpt):
+                c=parameters['color_map'][color[k, i, j]-1]
+                if parameters['energy_window'][0] < dict['eng'][k, i] < parameters['energy_window'][1]:
+                    #and not np.allclose(lwidths[k, i, j], 0, atol= 1e-3):
+                    plt.scatter(kd[k], dict['eng'][k, i], s=lwidths[k, i, j]*scale, color=c, alpha=0.4)
 
     plt.axis([kd[0], kd[-1], parameters['energy_window'][0], parameters['energy_window'][1]])
     plt.show()
