@@ -6,15 +6,16 @@ import matplotlib.pyplot as plt
 import easygui
 
 
-parameters = {'data_set': [True, False, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
+parameters = {'data_set': [False, True, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
 parameters['scale'] = 500
 
-parameters['ions']= [[0,1,10,11], [40, 41, 50, 51],[20.21, 30, 31], ]
+parameters['ions']= [[28, 29, 38, 39], [48, 49, 58, 59],[20.21, 30, 31], [40, 41, 50, 51]]
+# [[0,1,10,11], [40, 41, 50, 51],[20.21, 30, 31], ]
 # [[28, 29, 38, 39], [48, 49, 58, 59]]
 # [[20.21, 30, 31], [40, 41, 50, 51]]
 # [[i for i in range(20, 40)],[i for i in range(40, 60)]]
-parameters['orbital_sum'] = [[0],[1,2,3], [0],]
-parameters['color_map'] = ['r', 'b', 'y']
+parameters['orbital'] = [[0],[1,2,3], [0], [1,2,3]]
+parameters['color_map'] = ['r', 'b', 'y', 'g']
 ##
 
 def read_CONTCAR(file=open('CONTCAR', 'r')):
@@ -111,11 +112,11 @@ def read_procar(parameters, file=open('PROCAR','r')):
 
     return dict
 
-#file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
-#file = open(file_name, 'r')
-dict = read_procar(parameters)
+file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
+file = open(file_name, 'r')
+dict = read_procar(parameters, file)
+print(dict['data'][0:20, 729:736, :])
 print("reading process is done")
-print("nband", dict['nband'])
 
 a = read_CONTCAR()
 ##
@@ -125,34 +126,17 @@ def band_analyze(dict, parameters):
     nkpt, nband, ndataset, nions, norbital = np.shape(dict['data'])
     print("data shape", nkpt, nband, ndataset, nions, norbital)
 
-    # sum ions
-    nion_sets = len(parameters['ions'])
-    data = np.zeros((nkpt, nband, ndataset, nion_sets, norbital), dtype='float')
-    for i in range(nion_sets):
+    # sum ions and orbitals
+    ions_set = len(parameters['ions'])
+    # orbitals_set = len(parameters['orbital']) orbital set should equal to ions set
+    data = np.zeros((nkpt, nband, ndataset, ions_set), dtype='float')
+    for i in range(ions_set):
         for k in parameters['ions'][i]:
-            data[:, :, :, i, :] += dict['data'][:, :, :, k, :]
+            for l in parameters['orbital'][i]:
+                data[:,:,:,i] += dict['data'][:,:,:, k, l]
+
     print("data shape after sum ion", np.shape(data))
-
-    # sum orbitals
-    norbital_set = len(parameters['orbital_sum'])
-    data1 = np.zeros((nkpt, nband, ndataset, nion_sets, norbital_set))
-    for i in range(norbital_set):
-        for j in parameters['orbital_sum'][i]:
-            data1[:, :, :, :, i] += data[:,:,:,:,j]
-    print("data shape after sum orbitals", np.shape(data1))
-    del data
-
-    # construct line_width, color
-    # we think nion_sets should be same with norbital_set
-    linewidth = np.zeros((nkpt, nband, ndataset, nion_sets), dtype='float')
-    color = np.zeros((nkpt, nband, ndataset, nion_sets), dtype='int')
-    for l in range(nion_sets):
-        linewidth[:,:,:,l] = data1[:,:,:,l, l]
-        color[:,:,:,l] = color[:,:,:,l] + l + 1
-    print("linewidth shape", np.shape(linewidth))
-
-    dict['linewidth'] = linewidth
-    dict['color'] = color
+    dict['data'] = data
     return
 
 ##
@@ -160,31 +144,29 @@ def plot_band(kd, parameters, dict, data_set):
     # plot
     # x = kd
     # y = eng[:,i]
-    lwidths = dict['linewidth'][:, :, data_set, :]
+    lwidths = dict['data'][:, :, data_set, :]
     nkpt, nband, norbitals = np.shape(lwidths)
     print("lwidth shape", nkpt, nband, norbitals)
-    color = dict['color'][:, :, data_set, :]
     scale = parameters['scale']
+    alpha = [1-1/norbitals * i for i in range(norbitals)]
+    print("alpha",alpha)
     for i in range(nband):
-        # only present the largest contribution
+        # plot band structure
         plt.plot(kd, dict['eng'][:, i], 'k-')
 
         for j in range(norbitals) :
             for k in range(nkpt):
-                c=parameters['color_map'][color[k, i, j]-1]
+                c=parameters['color_map'][j]
                 if parameters['energy_window'][0] < dict['eng'][k, i] < parameters['energy_window'][1]:
-                    #and not np.allclose(lwidths[k, i, j], 0, atol= 1e-3):
-                    plt.scatter(kd[k], dict['eng'][k, i], s=lwidths[k, i, j]*scale, color=c, alpha=0.4)
+                    plt.scatter(kd[k], dict['eng'][k, i], s=lwidths[k, i, j]*scale, color=c, alpha=alpha[j])
 
     plt.axis([kd[0], kd[-1], parameters['energy_window'][0], parameters['energy_window'][1]])
     plt.show()
     return
 
-
-
-
 b = get_b(a)
 kd = get_k_distance(dict['kpt'], b)
 band_analyze(dict, parameters)
-plot_band(kd, parameters, dict, 0)
+#plot_band(kd, parameters, dict, 0)
+
 print("All done!")
