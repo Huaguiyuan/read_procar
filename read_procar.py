@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 import easygui
 
 
-parameters = {'data_set': [True, False, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
+parameters = {'data_set': [True, False, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[3, 6]}
 parameters['scale'] = 500
 
-parameters['ions']= [[0,1,2], [4,5]]
+parameters['ions']= [[0,1,2], [3,4]]
 # [[28, 29, 42, 43], [56,57,70,71]]
 # [[40,41,54,55],[68,69,82,83]]
 # [[i for i in range(20, 40)],[i for i in range(40, 60)]]
-parameters['orbital'] = [[0], [1,2,3]]
+parameters['orbital'] = [[1,2,3], [1,2,3]]
 parameters['color_map'] = ['r', 'b', 'y', 'g']
 ##
 
@@ -144,6 +144,7 @@ def write_pband(dict, parameters):
     for i in range(ndataset):
         filename = 'pband-'+ str(indices[i])
         file = open(filename, 'w')
+        print('nkpt', nkpt, 'nband', nband, 'data set', i, file=file)
         for j in range(nband):
             for k in range(nkpt):
                 line = '{0: 4d}    {1: 8f}    {2: 8f}    '.format(j, kd[k], dict['eng'][k, j])
@@ -151,6 +152,8 @@ def write_pband(dict, parameters):
                     line += '{: 4f}    '.format(dict['data'][k, j, i, l])
                 print(line.strip(), file=file)
             print("\n", file=file)
+
+
 ##
 def plot_band(kd, parameters, dict, data_set):
     # plot
@@ -179,6 +182,7 @@ def plot_band(kd, parameters, dict, data_set):
 b = get_b(a)
 kd = get_k_distance(dict['kpt'], b)
 band_analyze(dict, parameters)
-plot_band(kd, parameters, dict, 0)
 write_pband(dict, parameters)
+#plot_band(kd, parameters, dict, 0)
+
 print("All done!")
