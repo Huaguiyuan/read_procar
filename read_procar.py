@@ -2,19 +2,17 @@
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
-#from matplotlib.collections import LineCollection
 import easygui
 
 
-parameters = {'data_set': [False, True, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
+parameters = {'data_set': [True, False, False, False], 'orbital_set':[i for i in range(9)], 'energy_window':[0, 2.5]}
 parameters['scale'] = 500
 
-parameters['ions']= [[28, 29, 38, 39], [48, 49, 58, 59],[20.21, 30, 31], [40, 41, 50, 51]]
-# [[0,1,10,11], [40, 41, 50, 51],[20.21, 30, 31], ]
-# [[28, 29, 38, 39], [48, 49, 58, 59]]
-# [[20.21, 30, 31], [40, 41, 50, 51]]
+parameters['ions']= [[0,1,2], [4,5]]
+# [[28, 29, 42, 43], [56,57,70,71]]
+# [[40,41,54,55],[68,69,82,83]]
 # [[i for i in range(20, 40)],[i for i in range(40, 60)]]
-parameters['orbital'] = [[0],[1,2,3], [0], [1,2,3]]
+parameters['orbital'] = [[0], [1,2,3]]
 parameters['color_map'] = ['r', 'b', 'y', 'g']
 ##
 
@@ -112,10 +110,10 @@ def read_procar(parameters, file=open('PROCAR','r')):
 
     return dict
 
-file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
-file = open(file_name, 'r')
-dict = read_procar(parameters, file)
-print(dict['data'][0:20, 729:736, :])
+#file_name = easygui.fileopenbox(default='/home/liuxy/Documents/workspace/KHgSb/')
+#file = open(file_name, 'r')
+dict = read_procar(parameters)
+#print(dict['data'][0:20, 729:736, :])
 print("reading process is done")
 
 a = read_CONTCAR()
@@ -139,6 +137,20 @@ def band_analyze(dict, parameters):
     dict['data'] = data
     return
 
+
+def write_pband(dict, parameters):
+    nkpt, nband, ndataset, norbital = np.shape(dict['data'])
+    indices = [i for i, x in enumerate(parameters['data_set']) if x == True]
+    for i in range(ndataset):
+        filename = 'pband-'+ str(indices[i])
+        file = open(filename, 'w')
+        for j in range(nband):
+            for k in range(nkpt):
+                line = '{0: 4d}    {1: 8f}    {2: 8f}    '.format(j, kd[k], dict['eng'][k, j])
+                for l in range(norbital):
+                    line += '{: 4f}    '.format(dict['data'][k, j, i, l])
+                print(line.strip(), file=file)
+            print("\n", file=file)
 ##
 def plot_band(kd, parameters, dict, data_set):
     # plot
@@ -167,6 +179,6 @@ def plot_band(kd, parameters, dict, data_set):
 b = get_b(a)
 kd = get_k_distance(dict['kpt'], b)
 band_analyze(dict, parameters)
-#plot_band(kd, parameters, dict, 0)
-
+plot_band(kd, parameters, dict, 0)
+write_pband(dict, parameters)
 print("All done!")
